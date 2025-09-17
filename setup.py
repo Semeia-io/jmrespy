@@ -15,7 +15,7 @@ setup(
         'patsy==0.5.2',
         'scipy==1.8.0',
         'tabulate==0.8.9',
-        'tqdm==4.63.0',
+        'tqdm==4.66.3',
         'bambi==0.10.0',
         'scikit-learn==1.0.2',
         'joblib==1.2.0',
