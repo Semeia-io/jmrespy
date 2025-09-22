@@ -1,1 +1,6 @@
 .vscode/
+build/
+jmrespy.egg-info/
+__pycache__/
+erreur.txt
+objets_debug_e_bfgs.sav
