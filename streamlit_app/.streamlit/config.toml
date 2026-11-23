@@ -1,0 +1,32 @@
+# Thème Streamlit aligné sur le design system Wiser (tailwind-wiser-base)
+[theme]
+base = "light"
+primaryColor = "#510C7B"              # purple
+backgroundColor = "#FFFFFF"           # white
+secondaryBackgroundColor = "#FAFAFA"  # grey-light
+textColor = "#1C1C1C"                 # black
+linkColor = "#510C7B"
+redColor = "#C2003A"
+orangeColor = "#FFA500"
+greenColor = "#45B854"
+violetColor = "#510C7B"
+grayColor = "#888888"
+borderColor = "#CFCFCF"               # grey-medium
+dataframeBorderColor = "#FAFAFA"
+dataframeHeaderBackgroundColor = "#FAF3FF"
+showWidgetBorder = true
+baseRadius = "0.5rem"                 # rounded-md
+buttonRadius = "0.5rem"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap"
+baseFontSize = 16
+chartCategoricalColors = ["#FC1369", "#510C7B", "#66BAAF", "#FFA500", "#888888"]
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"

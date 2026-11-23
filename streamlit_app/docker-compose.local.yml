@@ -1,0 +1,25 @@
+# Développement local. Lancer DEPUIS ce dossier :
+#   docker compose -f docker-compose.local.yml up --build
+# puis ouvrir http://localhost:8501
+#
+# Le contexte de build est le dépôt parent (../) pour embarquer le paquet jmrespy/,
+# voisin de streamlit_app/ (cf. streamlit_app/Dockerfile).
+services:
+  jmrespy:
+    build:
+      context: ../
+      dockerfile: ./streamlit_app/Dockerfile
+    image: jmrespy-ruo:local
+    container_name: jmrespy-ruo
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    # Application RUO autonome : ni base de données, ni authentification, ni secret,
+    # et aucune écriture sur disque (l'export CSV passe par le navigateur). D'où
+    # l'absence de section `environment`, `env_file` et `volumes`.
+    #
+    # Pour itérer sur le code sans rebuild (live-reload Streamlit), décommenter le
+    # montage ci-dessous — il superpose le code local au code embarqué dans l'image :
+    # volumes:
+    #   - ./:/app
+    #   - ../jmrespy:/opt/jmrespy/jmrespy

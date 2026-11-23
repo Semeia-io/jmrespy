@@ -1,0 +1,36 @@
+# .dockerignore à la racine du CONTEXTE de build (le dépôt jmrespy), car c'est
+# cette racine que Docker consulte quand le compose fixe `context: ../`. Réduit le
+# contexte envoyé au daemon aux seuls éléments copiés par streamlit_app/Dockerfile
+# (le paquet jmrespy/ et le dossier streamlit_app/).
+.git
+.gitignore
+**/__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+**/.DS_Store
+
+# Environnements virtuels locaux (≈12 Mo chacun), jamais nécessaires dans l'image.
+.venv/
+**/.venv/
+venv/
+env/
+
+# IDE / outillage local
+.idea/
+.vscode/
+
+# Artefacts de packaging jmrespy (cf. .gitignore du dépôt)
+build/
+*.egg-info/
+jmrespy.egg-info/
+erreur.txt
+objets_debug_e_bfgs.sav
+
+# Hors périmètre de l'app RUO (non copié par le Dockerfile de toute façon)
+examples/
+
+# Secrets Streamlit éventuels : ne jamais embarquer dans l'image.
+**/.streamlit/secrets.toml
+.env
+.env.*

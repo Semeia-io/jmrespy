@@ -1,0 +1,21 @@
+# Versions figées par jmrespy (setup.py) — ne pas laisser pip les mettre à jour
+numpy==1.24.2
+pandas==1.4.1
+scipy==1.8.0
+statsmodels==0.13.2
+lifelines==0.27.4
+# lifelines sérialise une Formula de formulaic ; en >=1.0 la classe est abstraite et le modèle
+# Dynkigraft (CoxPHFitter picklé) ne se déserialise plus. Figer en 0.6.x (concrete Formula).
+formulaic==0.6.6
+patsy==0.5.2
+scikit-learn==1.0.2
+joblib==1.2.0
+bambi==0.10.0
+tabulate==0.8.9
+tqdm==4.63.0
+mpire==2.7.1
+# Non figés dans jmrespy mais nécessaires : PyMC >= 5.1 exige numpy >= 1.25 (Generator.spawn)
+pymc==5.0.2
+# Interface
+streamlit==1.65.0
+plotly==7.1.0

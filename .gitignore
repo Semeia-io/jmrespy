@@ -4,3 +4,12 @@ jmrespy.egg-info/
 __pycache__/
 erreur.txt
 objets_debug_e_bfgs.sav
+# Environnements virtuels, IDE, macOS, secrets (ajout containerisation)
+.venv/
+**/.venv/
+.idea/
+.DS_Store
+**/.DS_Store
+.env
+.env.*
+**/.streamlit/secrets.toml
