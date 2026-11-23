@@ -12,7 +12,7 @@ scikit-learn==1.0.2
 joblib==1.2.0
 bambi==0.10.0
 tabulate==0.8.9
-tqdm==4.63.0
+tqdm==4.66.3
 mpire==2.7.1
 # Non figés dans jmrespy mais nécessaires : PyMC >= 5.1 exige numpy >= 1.25 (Generator.spawn)
 pymc==5.0.2
