@@ -1,0 +1,26 @@
+# Production (variante allégée, autonome — sans reverse-proxy ni réseau partagé
+# semeia_apps : l'app RUO n'a ni base, ni auth, ni secret). Elle expose directement
+# son port 8501, à placer au besoin derrière un proxy/TLS géré à l'extérieur.
+#
+# Build et publication de l'image :
+#   JMRESPY_VERSION=1.0.0 docker compose build
+#   JMRESPY_VERSION=1.0.0 docker compose push
+# Déploiement (image déjà publiée) :
+#   JMRESPY_VERSION=1.0.0 docker compose up -d
+services:
+  jmrespy:
+    build:
+      context: ../
+      dockerfile: ./streamlit_app/Dockerfile
+    # La production tourne sur amd64. Le Dockerfile ne pose plus de pin --platform
+    # (pour autoriser les builds arm en local) : on fige donc ici la plateforme de
+    # build et d'exécution du service de production.
+    platform: linux/amd64
+    image: ghcr.io/semeia-io/data-corner/jmrespy:${JMRESPY_VERSION:-latest}
+    container_name: jmrespy-ruo
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    # Pas de section environment/env_file/volumes : application autonome, le modèle
+    # (models/Dynkigraft.sav) est embarqué dans l'image par le Dockerfile.
+    # Le HEALTHCHECK est défini dans le Dockerfile (GET /_stcore/health).
