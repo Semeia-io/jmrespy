@@ -214,122 +214,109 @@ if waiting:
 
 # --- Résultats -----------------------------------------------------------------------
 with right:
-    tab_pred, tab_data, tab_about = st.tabs([t("tab_pred", lang), t("tab_data", lang), t("tab_about", lang)])
+    if waiting:
+        st.caption("⏳ " + t("recomputing", lang))
+    err = st.session_state.get("error")
+    if err:
+        st.error(err)
+    r = st.session_state.get("result")
+    if not r:
+        if not err:
+            st.html(f'<div class="wr-empty">{t("not_computed", lang)}</div>')
+        landmark_slider()
+    else:
+        res = r["res"]
+        evt_label = next(e.label[lang] for e in spec.EVENTS if e.key == r["event"])
+        items = []
+        for d in [x for x in (1, 3, 5) if x <= r["horizon"]] or [r["horizon"]]:
+            p = predict.risk_at(res, d)
+            items.append((f"{p:.0%}", t("risk_at", lang, d=f"{d:g}", s="s" if d > 1 else ""), "pink"))
+        items.append((f"{r['elapsed']:.1f} s", t("compute_time", lang), "grey"))
+        wiser.pills(items)
 
-    with tab_pred:
-        if waiting:
-            st.caption("⏳ " + t("recomputing", lang))
-        err = st.session_state.get("error")
-        if err:
-            st.error(err)
-        r = st.session_state.get("result")
-        if not r:
-            if not err:
-                st.html(f'<div class="wr-empty">{t("not_computed", lang)}</div>')
-            landmark_slider()
-        else:
-            res = r["res"]
-            evt_label = next(e.label[lang] for e in spec.EVENTS if e.key == r["event"])
-            items = []
-            for d in [x for x in (1, 3, 5) if x <= r["horizon"]] or [r["horizon"]]:
-                p = predict.risk_at(res, d)
-                items.append((f"{p:.0%}", t("risk_at", lang, d=f"{d:g}", s="s" if d > 1 else ""), "pink"))
-            items.append((f"{r['elapsed']:.1f} s", t("compute_time", lang), "grey"))
-            wiser.pills(items)
+        # Graphique multi-panneaux (comme la Figure 6) : un panneau par marqueur + le risque
+        lm = r["landmark"]
+        markers = spec.MARKERS
+        n = len(markers)
+        # Référence : patient du papier dans son état par défaut (toujours affichée, couleur sombre)
+        ref_res = r.get("ref_res")
+        ref_patient = spec.PATIENTS_BY_KEY.get(r.get("patient_key"))
+        ref_follow = ref_patient.follow if ref_patient is not None else None
+        fig = make_subplots(rows=n + 1, cols=1, shared_xaxes=True,
+                            vertical_spacing=0.05, row_heights=[0.2] * n + [0.4])
 
-            # Graphique multi-panneaux (comme la Figure 6) : un panneau par marqueur + le risque
-            lm = r["landmark"]
-            markers = spec.MARKERS
-            n = len(markers)
-            # Référence : patient du papier dans son état par défaut (toujours affichée, couleur sombre)
-            ref_res = r.get("ref_res")
-            ref_patient = spec.PATIENTS_BY_KEY.get(r.get("patient_key"))
-            ref_follow = ref_patient.follow if ref_patient is not None else None
-            fig = make_subplots(rows=n + 1, cols=1, shared_xaxes=True,
-                                vertical_spacing=0.05, row_heights=[0.2] * n + [0.4])
-
-            for i, m in enumerate(markers, start=1):
-                obs = follow.dropna(subset=[m.input_col])
-                before = obs[obs[spec.TIME_COL] <= lm + 1e-9]
-                after = obs[obs[spec.TIME_COL] > lm + 1e-9]
-                fig.add_trace(go.Scatter(
-                    x=before[spec.TIME_COL], y=before[m.input_col], mode="markers+lines", showlegend=False,
-                    marker=dict(color=wiser.PURPLE, size=7), line=dict(color=wiser.PURPLE_MEDIUM, width=1),
-                    hovertemplate="%{x:.2f} : %{y}<extra></extra>",
-                ), row=i, col=1)
-                if len(after):
-                    fig.add_trace(go.Scatter(
-                        x=after[spec.TIME_COL], y=after[m.input_col], mode="markers", showlegend=False,
-                        marker=dict(color=wiser.GREY_MEDIUM, size=6, symbol="circle-open"),
-                    ), row=i, col=1)
-                if ref_follow is not None:  # trajectoire de référence (papier), sombre et discrète
-                    robs = ref_follow.dropna(subset=[m.input_col])
-                    robs = robs[robs[spec.TIME_COL] <= lm + 1e-9]
-                    fig.add_trace(go.Scatter(
-                        x=robs[spec.TIME_COL], y=robs[m.input_col], mode="lines+markers", showlegend=False,
-                        line=dict(color=wiser.BLACK, width=1, dash="dot"),
-                        marker=dict(color=wiser.BLACK, size=5, symbol="circle-open"), opacity=0.45,
-                        hoverinfo="skip",
-                    ), row=i, col=1)
-                fig.update_yaxes(title_text=f"{m.label[lang]}<br>({m.unit})" if m.unit else m.label[lang],
-                                 title_font=dict(size=11), color=wiser.PURPLE, row=i, col=1)
-                if m.kind == "binary":
-                    fig.update_yaxes(tickvals=[0, 1], range=[-0.3, 1.3], row=i, col=1)
-                elif m.log_axis:
-                    fig.update_yaxes(type="log", row=i, col=1)
-
-            # Dernier panneau : probabilité cumulée de l'évènement
-            rrow = n + 1
-            x = np.concatenate([[lm], res["u"].to_numpy()])
-            if r["simulate"]:
-                hi = np.concatenate([[0], res["upper"].to_numpy()])
-                lo = np.concatenate([[0], res["lower"].to_numpy()])
-                fig.add_trace(go.Scatter(x=x, y=hi, line=dict(width=0), showlegend=False, hoverinfo="skip"), row=rrow, col=1)
-                fig.add_trace(go.Scatter(x=x, y=lo, line=dict(width=0), fill="tonexty",
-                                         fillcolor="rgba(252,19,105,0.15)", showlegend=False, hoverinfo="skip"), row=rrow, col=1)
+        for i, m in enumerate(markers, start=1):
+            obs = follow.dropna(subset=[m.input_col])
+            before = obs[obs[spec.TIME_COL] <= lm + 1e-9]
+            after = obs[obs[spec.TIME_COL] > lm + 1e-9]
             fig.add_trace(go.Scatter(
-                x=x, y=np.concatenate([[0], res["pi"].to_numpy()]), mode="lines", showlegend=True,
-                name=t("current_curve", lang),
-                line=dict(color=wiser.PINK, width=3), hovertemplate="%{x:.2f} : %{y:.1%}<extra></extra>",
-            ), row=rrow, col=1)
-            if ref_res is not None:  # courbe de risque de référence (état par défaut du papier)
-                rx = np.concatenate([[lm], ref_res["u"].to_numpy()])
+                x=before[spec.TIME_COL], y=before[m.input_col], mode="markers+lines", showlegend=False,
+                marker=dict(color=wiser.PURPLE, size=7), line=dict(color=wiser.PURPLE_MEDIUM, width=1),
+                hovertemplate="%{x:.2f} : %{y}<extra></extra>",
+            ), row=i, col=1)
+            if len(after):
                 fig.add_trace(go.Scatter(
-                    x=rx, y=np.concatenate([[0], ref_res["pi"].to_numpy()]), mode="lines", showlegend=True,
-                    name=t("ref_curve", lang), line=dict(color=wiser.BLACK, width=2, dash="dot"),
-                    hovertemplate="%{x:.2f} : %{y:.1%}<extra></extra>",
-                ), row=rrow, col=1)
-            _refmax = float(ref_res["pi"].max()) if ref_res is not None else 0.0
-            ymax = float(min(1.0, max(0.2, _refmax, res[["upper" if r["simulate"] else "pi"]].max().iloc[0]) * 1.15))
-            fig.update_yaxes(range=[0, ymax], tickformat=".0%", title_text=t("cif", lang),
-                             title_font=dict(size=11), color=wiser.PINK, row=rrow, col=1)
+                    x=after[spec.TIME_COL], y=after[m.input_col], mode="markers", showlegend=False,
+                    marker=dict(color=wiser.GREY_MEDIUM, size=6, symbol="circle-open"),
+                ), row=i, col=1)
+            if ref_follow is not None:  # trajectoire de référence (papier), sombre et discrète
+                robs = ref_follow.dropna(subset=[m.input_col])
+                robs = robs[robs[spec.TIME_COL] <= lm + 1e-9]
+                fig.add_trace(go.Scatter(
+                    x=robs[spec.TIME_COL], y=robs[m.input_col], mode="lines+markers", showlegend=False,
+                    line=dict(color=wiser.BLACK, width=1, dash="dot"),
+                    marker=dict(color=wiser.BLACK, size=5, symbol="circle-open"), opacity=0.45,
+                    hoverinfo="skip",
+                ), row=i, col=1)
+            fig.update_yaxes(title_text=f"{m.label[lang]}<br>({m.unit})" if m.unit else m.label[lang],
+                             title_font=dict(size=11), color=wiser.PURPLE, row=i, col=1)
+            if m.kind == "binary":
+                fig.update_yaxes(tickvals=[0, 1], range=[-0.3, 1.3], row=i, col=1)
+            elif m.log_axis:
+                fig.update_yaxes(type="log", row=i, col=1)
 
-            # Ligne de landmark (t) et plage de temps communes à tous les panneaux
-            for i in range(1, n + 2):
-                fig.add_vline(x=lm, line=dict(color=wiser.BLACK, width=1, dash="dot"), row=i, col=1)
-                fig.update_xaxes(range=[-0.2, lm + r["horizon"] + 0.2], row=i, col=1)
-            fig.update_xaxes(title_text=t("time_axis", lang), title_standoff=8, row=rrow, col=1)
-            fig.update_layout(
-                template="wiser", height=610, showlegend=True,
-                legend=dict(orientation="h", yanchor="top", y=-0.16, x=0, bgcolor="rgba(0,0,0,0)"),
-                title=dict(text=t("plot_title", lang, evt=evt_label.lower(), t=lm, s="s" if lm > 1 else ""),
-                           font=dict(size=15, color=wiser.BLACK), x=0, y=0.99),
-                margin=dict(t=60, l=10, r=10, b=95),
-            )
-            st.plotly_chart(fig, width="stretch", config={"displaylogo": False})
-            landmark_slider()  # temps de prédiction t, sous le graphique
+        # Dernier panneau : probabilité cumulée de l'évènement
+        rrow = n + 1
+        x = np.concatenate([[lm], res["u"].to_numpy()])
+        if r["simulate"]:
+            hi = np.concatenate([[0], res["upper"].to_numpy()])
+            lo = np.concatenate([[0], res["lower"].to_numpy()])
+            fig.add_trace(go.Scatter(x=x, y=hi, line=dict(width=0), showlegend=False, hoverinfo="skip"), row=rrow, col=1)
+            fig.add_trace(go.Scatter(x=x, y=lo, line=dict(width=0), fill="tonexty",
+                                     fillcolor="rgba(252,19,105,0.15)", showlegend=False, hoverinfo="skip"), row=rrow, col=1)
+        fig.add_trace(go.Scatter(
+            x=x, y=np.concatenate([[0], res["pi"].to_numpy()]), mode="lines", showlegend=True,
+            name=t("current_curve", lang),
+            line=dict(color=wiser.PINK, width=3), hovertemplate="%{x:.2f} : %{y:.1%}<extra></extra>",
+        ), row=rrow, col=1)
+        if ref_res is not None:  # courbe de risque de référence (état par défaut du papier)
+            rx = np.concatenate([[lm], ref_res["u"].to_numpy()])
+            fig.add_trace(go.Scatter(
+                x=rx, y=np.concatenate([[0], ref_res["pi"].to_numpy()]), mode="lines", showlegend=True,
+                name=t("ref_curve", lang), line=dict(color=wiser.BLACK, width=2, dash="dot"),
+                hovertemplate="%{x:.2f} : %{y:.1%}<extra></extra>",
+            ), row=rrow, col=1)
+        _refmax = float(ref_res["pi"].max()) if ref_res is not None else 0.0
+        ymax = float(min(1.0, max(0.2, _refmax, res[["upper" if r["simulate"] else "pi"]].max().iloc[0]) * 1.15))
+        fig.update_yaxes(range=[0, ymax], tickformat=".0%", title_text=t("cif", lang),
+                         title_font=dict(size=11), color=wiser.PINK, row=rrow, col=1)
 
-            show = res[["t", "u", "delta", "pi"] + (["lower", "upper"] if r["simulate"] else [])].copy()
-            st.download_button(t("download", lang), show.to_csv(index=False).encode(), "prediction_jmrespy.csv", "text/csv")
+        # Ligne de landmark (t) et plage de temps communes à tous les panneaux
+        for i in range(1, n + 2):
+            fig.add_vline(x=lm, line=dict(color=wiser.BLACK, width=1, dash="dot"), row=i, col=1)
+            fig.update_xaxes(range=[-0.2, lm + r["horizon"] + 0.2], row=i, col=1)
+        fig.update_xaxes(title_text=t("time_axis", lang), title_standoff=8, row=rrow, col=1)
+        fig.update_layout(
+            template="wiser", height=610, showlegend=True,
+            legend=dict(orientation="h", yanchor="top", y=-0.16, x=0, bgcolor="rgba(0,0,0,0)"),
+            title=dict(text=t("plot_title", lang, evt=evt_label.lower(), t=lm, s="s" if lm > 1 else ""),
+                       font=dict(size=15, color=wiser.BLACK), x=0, y=0.99),
+            margin=dict(t=60, l=10, r=10, b=95),
+        )
+        st.plotly_chart(fig, width="stretch", config={"displaylogo": False})
+        landmark_slider()  # temps de prédiction t, sous le graphique
 
-    with tab_data:
-        st.markdown(f"**{t('sec_patient', lang)}**")
-        st.dataframe(baseline_df, hide_index=True, width="stretch")
-        for m in spec.MARKERS:
-            st.markdown(f"**{m.label[lang]}** — `{m.key}` → `{m.model_col}` (`{m.time_var}`)")
-            st.dataframe(long_dict[m.key], hide_index=True, width="stretch")
-
-    with tab_about:
-        st.markdown(t("about_md", lang))
+        show = res[["t", "u", "delta", "pi"] + (["lower", "upper"] if r["simulate"] else [])].copy()
+        st.download_button(t("download", lang), show.to_csv(index=False).encode(), "prediction_jmrespy.csv", "text/csv")
 
 wiser.footer(t("footer", lang))
