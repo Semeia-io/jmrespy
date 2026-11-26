@@ -17,7 +17,7 @@ setup(
         'tabulate==0.8.9',
         'tqdm==4.63.0',
         'bambi==0.10.0',
-        'scikit-learn==1.0.2',
+        'scikit-learn==1.5.0',
         'joblib==1.2.0',
         'mpire==2.7.1'
     ]
